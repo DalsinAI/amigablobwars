@@ -1,0 +1,2 @@
+void tankBossGLInit();
+void tankBossMGInit();

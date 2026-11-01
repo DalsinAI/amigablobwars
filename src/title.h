@@ -1,0 +1,2 @@
+void doCredits();
+int title();

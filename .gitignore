@@ -1,0 +1,13 @@
+# Meson build directory
+/build
+
+# Cruft
+.*
+*~
+core
+core.*
+vgcore.*
+
+# Exceptions
+!.clang-format
+!.gitignore
