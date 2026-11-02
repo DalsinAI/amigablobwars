@@ -1,6 +1,6 @@
 # Amiga port intake: Blob Wars: Metal Blob Solid
 
-- Port Atlas: [g-blob-wars-metal-blob-solid](https://www.amigachrome.com/ports/#g-blob-wars-metal-blob-solid)
+- Port Atlas: [g-blob-wars-metal-blob-solid](https://www.amicradle.com/ports/#g-blob-wars-metal-blob-solid)
 - Priority: `P1`
 - Atlas decision: `evaluate`
 - Upstream source: `https://github.com/perpendicular-dimensions/blobwars`
