@@ -104,7 +104,7 @@ bool Config::loadJoystickConfig()
 
 	file.read((char *)&joystick, sizeof(Joystick));
 
-	if (file.bad())
+	if (!file) // a file that is not there sets failbit only, not badbit
 	{
 		return false;
 	}
@@ -144,7 +144,7 @@ bool Config::loadKeyConfig()
 
 	file.read((char *)&keyboard, sizeof(Keyboard));
 
-	if (file.bad())
+	if (!file) // a file that is not there sets failbit only, not badbit
 	{
 		return false;
 	}
