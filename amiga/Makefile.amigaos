@@ -1,0 +1,111 @@
+# Blob Wars: Metal Blob Solid 2.00 for AmigaOS 3.x, 68040/68060 + FPU, on
+# OpenGPU's SDL 2.
+#
+#   make -f amiga/Makefile.amigaos -j2 dist \
+#        STOVE=/path/to/openamigagcc-16.2.0-open4 \
+#        NDK=/path/to/OpenNDK/Include_H SDL2KIT=/path/to/opengpu-sdk \
+#        DEPS=/path/to/m68k-amigaos
+#
+# Meson is not run: this Makefile has src/meson.build's source list (the
+# game: not mapeditor, nor pak) and
+# meson.build's definitions; amiga/gen_defines.py makes src/defines.cpp as
+# tools/makedefs.sh would. SDL2KIT is the OpenGPU developer kit (SDL2,
+# SDL2_image, SDL2_mixer, SDL2_ttf, SDL2_net: the program's halves of
+# LIBS:OpenGPU's modules). DEPS has the Team's static zlib
+# (/mnt/amigachrome/team2/deps/m68k-amigaos). fmt 10.2.1 and yaml-cpp 0.8.0
+# are compiled in from amiga/deps (both MIT). No gettext: the game is in
+# English. The data is used unpacked (USEPAK=0), from the drawer; its
+# 8-bit RGB PNGs are stored as RGBA (amiga/tools/png_rgba.py:
+# SDL2_image.module 0.6 damages the host's heap decoding some of them).
+
+STOVE   ?= $(HOME)/CradleLab/toolchain/openamigagcc-16.2.0-open4-x86_64-linux
+NDK     ?= $(HOME)/CradleLab/gfopensdk/OpenNDK/Include_H
+SDL2KIT ?= /mnt/amigachrome/team2/deps/opengpu-sdk
+DEPS    ?= /mnt/amigachrome/team2/deps/m68k-amigaos
+FMT     = amiga/deps/fmt-10.2.1
+YAML    = amiga/deps/yaml-cpp-0.8.0
+CC      = $(STOVE)/bin/m68k-amigaos-gcc
+CXX     = $(STOVE)/bin/m68k-amigaos-g++
+STRIP   = $(STOVE)/bin/m68k-amigaos-strip
+CPU     ?= -m68040 -m68881
+# -fno-tree-loop-distribute-patterns: GCC 16's loop miscompile (the kit's
+# sdl2-config gives it for GCC 16 too).
+OPT     ?= -O2 -fomit-frame-pointer -fno-tree-loop-distribute-patterns
+
+BUILD   = build/amigaos
+OBJDIR  = $(BUILD)/obj
+PROG    = BlobWars
+OUT     = dist/BlobWars
+
+DEFS    = -D__amigaos__ -DNDEBUG -DVERSION=2.00 -DRELEASE=1 -DUSEPAK=0 \
+          -DLOCALEDIR=\"locale\" -DPAKNAME=\"blobwars.pak\" -DPAKLOCATION=\"\" \
+          -DGAMEPLAYMANUAL=\"doc/manual.html\" \
+          -DMEDAL_SERVER_HOST=\"www.stephenjsweeney.com\" -DMEDAL_SERVER_PORT=80 \
+          -DFMT_HEADER_ONLY=0
+INC     = -Isrc -I$(BUILD)/gen -I$(FMT)/include -I$(YAML)/include \
+          -I$(SDL2KIT)/include -I$(SDL2KIT)/include/SDL2 -I$(DEPS)/include
+CFLAGS  = -noixemul $(OPT) $(CPU) -fno-common
+CXXFLAGS = $(CFLAGS) $(DEFS) $(INC) -std=gnu++17 -Wno-psabi
+LDFLAGS = -noixemul $(CPU)
+LIBS    = -L$(SDL2KIT)/lib -L$(DEPS)/lib -lSDL2_ttf -lSDL2_mixer -lSDL2_image \
+          -lSDL2_net -lSDL2 -lz -lsocket -lpthread -latomic -lm
+
+SRC     = $(sort $(filter-out src/defines.cpp src/mapEditor.cpp src/pak.cpp,$(shell python3 -c "import re; s=open('src/meson.build').read(); print(' '.join('src/'+x for x in re.findall(r\"'([A-Za-z0-9_]+\.cpp)'\", s)))")))
+FMTSRC  = $(FMT)/src/format.cc $(FMT)/src/os.cc
+YAMLSRC = $(wildcard $(YAML)/src/*.cpp)
+CSRC    = amiga/amiga_start.c amiga/amiga_screens.c amiga/stack.c
+
+OBJS    = $(SRC:%.cpp=$(OBJDIR)/%.o) $(OBJDIR)/gen/defines.o \
+          $(FMTSRC:%.cc=$(OBJDIR)/%.o) $(YAMLSRC:%.cpp=$(OBJDIR)/%.o) \
+          $(CSRC:%.c=$(OBJDIR)/%.o)
+HDRS    = $(wildcard src/*.h)
+ICONS   = $(wildcard amiga/icons/*.info)
+
+all: $(BUILD)/$(PROG)
+
+$(BUILD)/$(PROG): $(OBJS)
+	$(CXX) $(LDFLAGS) -o $@.debug $(OBJS) $(LIBS)
+	$(STRIP) -o $@ $@.debug
+
+$(BUILD)/gen/defines.cpp: src/defines.h amiga/gen_defines.py
+	@mkdir -p $(dir $@)
+	python3 amiga/gen_defines.py $< $@
+
+$(OBJDIR)/gen/defines.o: $(BUILD)/gen/defines.cpp $(HDRS)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+$(OBJDIR)/src/%.o: src/%.cpp $(HDRS)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+$(OBJDIR)/$(FMT)/%.o: $(FMT)/%.cc
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+$(OBJDIR)/$(YAML)/%.o: $(YAML)/%.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) -I$(YAML)/src -c -o $@ $<
+
+$(OBJDIR)/amiga/%.o: amiga/%.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -I$(NDK) -Wall -Wextra -c -o $@ $<
+
+# The drawer: the program, the game's data, graphics, music and sounds,
+# the manual, ReadMe and the licence.
+dist: $(BUILD)/$(PROG) $(ICONS) AMIGA_PORT.md
+	rm -rf $(OUT) && mkdir -p $(OUT)
+	cp $(BUILD)/$(PROG) $(OUT)/
+	cp -R data gfx music sound doc $(OUT)/
+	python3 amiga/tools/png_rgba.py $(OUT)/gfx
+	cp AMIGA_PORT.md $(OUT)/ReadMe
+	cp doc/license $(OUT)/COPYING.txt
+	cp amiga/icons/BlobWars.info amiga/icons/ReadMe.info $(OUT)/
+	cp amiga/icons/ReadMe.info $(OUT)/COPYING.txt.info
+	cd $(OUT) && find . -mindepth 1 -type d | while read d; do cp $(CURDIR)/amiga/icons/Folder.info "$$d.info"; done
+	cp amiga/icons/BlobWars-drawer.info dist/BlobWars.info
+
+clean:
+	rm -rf $(BUILD)
+
+.PHONY: all clean dist

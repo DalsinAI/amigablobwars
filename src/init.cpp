@@ -82,7 +82,16 @@ void showLicense()
 
 void setupUserHomeDirectory()
 {
-#ifndef _WIN32
+#ifdef __amigaos__
+	// settings, saves and replays in the drawer's user/ (the program runs
+	// in its drawer: amiga/amiga_start.c)
+	if ((mkdir("user", 0777) != 0) && (errno != EEXIST))
+	{
+		printf("Couldn't create required directory 'user'\n");
+		exit(1);
+	}
+	engine.setUserHome("user/");
+#elif !defined(_WIN32)
 	char *userHome = getenv("HOME");
 
 	if ((!userHome) || (userHome == nullptr))

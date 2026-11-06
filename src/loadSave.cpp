@@ -34,7 +34,8 @@ void initSaveSlots()
 
 		std::ifstream file(filename);
 
-		if (file.bad())
+		// !file, not bad(): a file that is not there sets failbit only
+		if (!file)
 		{
 			engine.saveSlot[i] = fmt::format("{} - {}", i + 1, _("Empty"));
 		}
@@ -43,7 +44,7 @@ void initSaveSlots()
 			PODGame tempGame;
 			file.read((char *)&tempGame, sizeof tempGame);
 
-			if (file.bad())
+			if (!file)
 			{
 				engine.saveSlot[i] = fmt::format("{} - {}", i + 1, _("Corrupt Save Data"));
 			}

@@ -69,7 +69,11 @@ extern DECLSPEC int SDLCALL SDL_GetGamma(float *red, float *green, float *blue);
 #include "SDL2/SDL_net.h"
 #endif
 
-#if !defined(_WIN32) && !defined(__APPLE__)
+#ifdef __amigaos__
+#include <unistd.h> // chdir(), access(): Linux has it from other headers
+#endif
+
+#if !defined(_WIN32) && !defined(__APPLE__) && !defined(__amigaos__)
 #include <libintl.h>
 #define _(x) gettext(x)
 #else
