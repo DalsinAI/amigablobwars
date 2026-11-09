@@ -99,6 +99,7 @@ dist: $(BUILD)/$(PROG) $(ICONS) AMIGA_PORT.md
 	cp -R data gfx music sound doc $(OUT)/
 	python3 amiga/tools/png_rgba.py $(OUT)/gfx
 	cp AMIGA_PORT.md $(OUT)/ReadMe
+	cp amiga/Controls $(OUT)/Controls
 	cp doc/license $(OUT)/COPYING.txt
 	cp amiga/icons/BlobWars.info amiga/icons/ReadMe.info $(OUT)/
 	cp amiga/icons/ReadMe.info $(OUT)/COPYING.txt.info
